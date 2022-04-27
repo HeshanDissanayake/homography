@@ -14,6 +14,7 @@ orb = cv2.ORB_create(1000)
 kp_image, desc_image = orb.detectAndCompute(img, None)
 
 matcher = cv2.DescriptorMatcher_create(cv2.DESCRIPTOR_MATCHER_BRUTEFORCE_HAMMING)
+p_dst = np.zeros((4,1,2))
 
 while True:
     try:
@@ -26,19 +27,19 @@ while True:
 
         
         
-        matches = matcher.match(desc_image, desc_grayframe, None)  #Creates a list of all matches, just like keypoints
+        matches = matcher.match(desc_image, desc_grayframe, None)
         
         # Sort them in the order of their distance.
         matches = sorted(matches, key = lambda x:x.distance)
         matches = matches[:12]
 
-        points1 = np.zeros((len(matches), 2), dtype=np.float32)  #Prints empty array of size equal to (matches, 2)
+        points1 = np.zeros((len(matches), 2), dtype=np.float32) 
         points2 = np.zeros((len(matches), 2), dtype=np.float32)
 
         
         for i, match in enumerate(matches):
-            points1[i, :] =  kp_image[match.queryIdx].pt    #gives index of the descriptor in the list of query descriptors
-            points2[i, :] = kp_grayframe[match.trainIdx].pt    #gives index of the descriptor in the list of train descriptors
+            points1[i, :] =  kp_image[match.queryIdx].pt   
+            points2[i, :] = kp_grayframe[match.trainIdx].pt
 
         img3 = cv2.drawMatches(img, kp_image, grayframe, kp_grayframe, matches, grayframe)
 
@@ -52,19 +53,23 @@ while True:
             pts = np.float32([[0, 0], [0, h], [w, h], [w, 0]]).reshape(-1, 1, 2)
         
             dst = cv2.perspectiveTransform(pts, matrix)
-            tiger = cv2.warpPerspective(tiger,matrix, (500, 500))
             
+            M = cv2.getPerspectiveTransform(pts, dst)
+            warp = cv2.warpPerspective(tiger, M, (500, 500))
+            
+            dst = p_dst*0.5 + dst*0.5
+            p_dst = dst
             homography = cv2.polylines(frame, [np.int32(dst)], True, (255, 0, 0), 3)
             cv2.imshow("Homography", homography)
         else:
             cv2.imshow("Homography", grayframe)
 
 
-        cv2.imshow("Image", tiger)
+        cv2.imshow("Image", warp)
         cv2.imshow("grayFrame", grayframe)
         # cv2.imshow("img3", img3)
         t2 = time()
-        print((t2-t1)*1000)
+        # print((t2-t1)*1000)
     except:
         print("No feature")
 
